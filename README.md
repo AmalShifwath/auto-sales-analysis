@@ -31,3 +31,12 @@ o Identifying seasonal or yearly variations in sales patterns.
 
 5. Predictive Accuracy:
 o Model evaluation metrics like R-squared and Mean Squared Error (MSE) to assess the quality of the regression model.
+
+## Dataset Summary
+The dataset contains 2,747 records of automobile sales data, detailing transaction-level information such as:
+• Order details: ORDERNUMBER, ORDERDATE, QUANTITYORDERED, and PRICEEACH.
+• Financial metrics: SALES (target variable), MSRP.
+• Categorical details: DEALSIZE, STATUS, PRODUCTLINE, and customer information (CITY, COUNTRY, etc.).
+• Date and Time: ORDERDATE, enabling time-based analysis.
+
+The dataset provides a comprehensive view of sales transactions, allowing analysis of sales patterns, customer behaviors, and other factors impacting performance.
