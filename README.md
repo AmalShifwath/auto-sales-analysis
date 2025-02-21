@@ -11,3 +11,23 @@ o Enable data-driven forecasting for inventory management and revenue planning.
 
 3. Provide Decision Support:
 o Deliver insights to stakeholders through a predictive dataset exported for Power BI, facilitating visualization and strategic decision-making.
+
+
+## Intended KPIs
+Key Performance Indicators (KPIs) include:
+
+1. Total Sales:
+o Overall revenue across transactions.
+o Aggregated by time periods (e.g., yearly, monthly).
+
+2. Average Sales per Order:
+o Mean revenue per transaction to gauge order profitability.
+
+3. Sales by Deal Size:
+o Comparing revenue contributions across deal sizes (Small, Medium, Large).
+
+4. Sales Trends:
+o Identifying seasonal or yearly variations in sales patterns.
+
+5. Predictive Accuracy:
+o Model evaluation metrics like R-squared and Mean Squared Error (MSE) to assess the quality of the regression model.
