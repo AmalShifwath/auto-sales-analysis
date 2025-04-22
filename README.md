@@ -1,4 +1,4 @@
-# Auto Sales Analysis
+# Auto Sales Trends Analysis
 
 The purpose of the project is to:
 1. Analyze Sales Performance:
