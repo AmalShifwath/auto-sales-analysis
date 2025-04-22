@@ -1,0 +1,298 @@
+---
+title: "Automobile Sales Data Analysis"
+author: "Amal Shifwath Shaik"
+output: html_document
+---
+
+## Project Overview
+This project focuses on analyzing the sales trends, customer behaviors, and purchasing patterns from a dataset containing transactional sales information. Through data wrangling, cleaning, and visualization, we aim to uncover meaningful insights that could guide decision-making and strategy development in sales forecasting and customer relationship management.
+
+## Objectives
+Data Wrangling and Cleaning: Convert and clean raw sales data for consistency and usability, with a focus on handling dates and missing values.
+Exploratory Data Analysis (EDA): Visualize and analyze data distributions and time series trends in sales.
+Customer Behavior Insights: Understand purchasing frequencies and patterns.
+Sales and Deal Size Relationship: Examine how deal sizes impact sales volume and revenue.
+
+
+## importing and loading all necessary libraries and dataset
+```{r setup, include=FALSE}
+
+library(tidyverse)
+library(lubridate)
+library(ggplot2)
+
+```
+
+
+```{r load-data}
+sales_data <- read.csv("Auto Sales data.csv")
+str(sales_data)
+```
+
+Our goal is to make data-driven recommendations based on these insights.
+
+##  Data Wrangling and Cleaning
+
+Data Wrangling and Cleaning
+
+Conversion of Date Format:
+
+The ORDERDATE field was initially in character format with inconsistent day/month/year formatting.
+Approach: Convert ORDERDATE to Date format to enable chronological analysis. Any non-standard date entries were cleaned or filtered out to ensure uniformity. This step ensures that all dates align with a consistent format ("%d/%m/%Y"), allowing time-based analyses like seasonal trends or year-over-year comparisons.
+
+```{r data-cleaning1}
+# Convert ORDERDATE to Date format
+sales_data$ORDERDATE <- as.Date(sales_data$ORDERDATE, format = "%d/%m/%Y")
+str(sales_data$ORDERDATE)
+summary(sales_data$SALES)
+```
+
+
+Handling Missing Values:
+
+Missing data in columns like ORDERDATE and SALES could disrupt analyses.
+Approach: Rows with critical missing values (e.g., empty ORDERDATE or SALES values) were removed to maintain data integrity. Additionally, columns were checked for infinite values, ensuring clean data inputs for analysis.Removing incomplete entries increases the reliability of the results and prevents skewed distributions in visualizations.
+
+```{r data-cleaning2, results="hide"}
+# Check for missing values in critical columns
+colSums(is.na(sales_data[c("ORDERDATE", "SALES")]))
+
+# Remove rows with missing or zero values in critical columns
+clean_sales_data <- sales_data %>%
+  filter(!is.na(ORDERDATE) & SALES > 0)
+
+# Filter out rows where critical data might be missing, if necessary
+clean_sales_data <- clean_sales_data %>%
+  filter(!is.na(SALES))
+
+# Remove rows with missing ORDERDATE values
+clean_sales_data <- clean_sales_data %>%
+  filter(!is.na(ORDERDATE))
+
+# Check for missing or infinite values
+sum(is.na(clean_sales_data$ORDERDATE))  # Number of NA values in ORDERDATE
+sum(is.na(clean_sales_data$SALES))      # Number of NA values in SALES
+
+sum(is.infinite(clean_sales_data$ORDERDATE))  # Check for infinite values in ORDERDATE
+sum(is.infinite(clean_sales_data$SALES))      # Check for infinite values in SALES
+
+```
+
+Checking whether cleaned:
+
+```{r data-cleaning3}
+
+str(clean_sales_data$ORDERDATE)
+summary(clean_sales_data$SALES)
+```
+
+# Exploratory Data Analysis
+
+## Sales Trend over time
+
+Analyze the distribution of sales by various factors:
+```{r EDA-sales-overtime-line, message = FALSE, warning = FALSE}
+# Plot Sales Over Time
+ggplot(clean_sales_data, aes(x = ORDERDATE, y = SALES)) +
+  geom_line(alpha = 0.3) +
+  geom_smooth(method = "loess", color = "blue") +
+  labs(title = "Sales Over Time with Trend Line", x = "Order Date", y = "Sales Amount")
+
+
+```
+Plot: A line graph was created with ORDERDATE on the x-axis and SALES on the y-axis, depicting the variations in sales amounts over time.
+
+Observations:
+The line chart reveals peaks and valleys in sales, suggesting possible seasonal patterns or cyclical trends.
+High spikes might correspond to promotional periods or bulk purchases.
+
+### Time series decomposition
+
+Next Steps: A deeper look into the factors causing peaks could be explored, such as external events, holidays, or special promotions during the year. Applying time-series decomposition methods to separate sales data into trend, seasonal, and residual components for a more detailed understanding of underlying patterns.
+
+This method will highlight whether certain times of the year are consistently higher in sales, aiding in inventory and marketing planning.
+
+
+```{r EDA-sales-timeseries-bymonth, results = "hide", message = FALSE, warning = FALSE}
+# Load necessary libraries
+library(forecast)
+
+# Aggregate monthly sales data
+monthly_sales <- clean_sales_data %>%
+  mutate(Month = floor_date(ORDERDATE, unit="month")) %>%
+  group_by(Month) %>%
+  summarise(Total_Sales = sum(SALES, na.rm = TRUE))
+
+# Convert to time-series object
+monthly_sales_ts <- ts(monthly_sales$Total_Sales, frequency = 12, start = c(year(min(monthly_sales$Month)), month(min(monthly_sales$Month))))
+
+# Apply seasonal decomposition
+decomposed_sales <- stl(monthly_sales_ts, s.window = "periodic")
+```
+
+```{r EDA-sales-timeseries-bymonth2}
+# Plot the decomposed components
+plot(decomposed_sales)
+
+```
+The plot is divided into four main components:
+
+Data (Observed Data): The top panel represents the original time series data (monthly sales in this case). This shows the total sales trend over time, combining all elements of seasonality, trend, and randomness.
+
+Seasonal Component:
+
+This component shows the recurring pattern that repeats over a regular period (in this case, monthly).
+Peaks in the seasonal component indicate times of higher demand within each year. For instance, if you see a peak around certain months each year, this suggests seasonality in sales, perhaps due to holiday sales, promotions, or other cyclical factors.
+Insight: The seasonal component suggests that certain months consistently see increased sales, which can be essential for planning marketing campaigns, inventory stocking, and staffing.
+
+
+Trend Component:
+
+The trend component captures the general direction in the data over a longer period, ignoring short-term fluctuations.
+In your plot, the trend line seems to be gradually increasing, which implies that sales have been growing over the analyzed period. This could indicate healthy business growth or expanding market reach.
+Insight: A positive trend indicates that the company is experiencing growth in sales over time, which is a favorable outcome. The company could leverage this information for forecasting future revenue and planning long-term strategy.
+
+Remainder (Residual) Component:
+
+The remainder (or residual) represents the noise or irregular variations in the data that are not captured by the seasonal or trend components.
+This component shows random fluctuations that could be due to unpredictable factors, like one-off promotions, changes in external economic conditions, or supply chain disruptions.
+Insight: Large spikes in the remainder suggest moments where actual sales deviate significantly from the expected seasonal and trend patterns. Identifying these outliers could help in understanding specific events that caused these anomalies.
+
+### Correlation Analysis
+Approach:
+
+We calculate correlations between SALES and other numerical variables (QUANTITYORDERED, PRICEEACH, MSRP) to identify significant relationships.
+Strong correlations indicate variables that are closely linked, potentially guiding pricing or promotion strategies.
+
+```{r ,message = FALSE, warning = FALSE}
+# Select relevant columns for correlation analysis
+numeric_data <- clean_sales_data %>%
+  select(SALES, QUANTITYORDERED, PRICEEACH, MSRP)
+
+# Calculate the correlation matrix
+cor_matrix <- cor(numeric_data, use = "complete.obs")
+
+# Display correlation matrix
+cor_matrix
+
+```
+SALES and PRICEEACH: Strong positive correlation (0.81). Higher per-item prices contribute significantly to total sales, suggesting that premium pricing can boost revenue.
+
+SALES and MSRP: Moderate positive correlation (0.63). Products with higher MSRP generate more sales, indicating customers are willing to pay close to the suggested retail price. Positioning high-MSRP items as premium can be beneficial.
+
+SALES and QUANTITYORDERED: Moderate positive correlation (0.55). Larger order sizes moderately increase sales, implying that bulk purchase incentives (like discounts) could further drive sales.
+
+PRICEEACH and MSRP: Strong positive correlation (0.78), showing that actual prices align with MSRP, reinforcing consistent pricing practices.
+
+Summary: Target high-MSRP and high-price items for premium positioning and consider volume discounts to encourage bulk purchases, aligning with these insights for maximum impact on sales.
+
+
+## Customer Purchase Patterns
+
+Explore customer purchase frequency and patterns:
+
+```{r,message = FALSE, warning = FALSE}
+# Plot histogram of Days Since Last Order
+ggplot(clean_sales_data, aes(x = DAYS_SINCE_LASTORDER)) +
+  geom_histogram(binwidth = 100, fill = "darkgray") +
+  labs(title = "Customer Purchase Frequency", x = "Days Since Last Order", y = "Frequency")
+
+```
+Distribution of Days Since Last Order:
+
+The histogram shows a roughly symmetrical distribution, peaking around the middle, which indicates that most customers place orders with a moderate frequency.
+A higher frequency on the left side (shorter intervals) suggests a segment of frequent buyers, while the right tail (longer intervals) shows occasional or inactive customers.
+
+### RFM Analysis (Recency, Frequency, Monetary)
+Approach:
+
+Recency: Time since the customer’s last purchase.
+Frequency: Number of purchases made by the customer.
+Monetary: Total spending by the customer.
+This analysis segments customers based on their purchase behavior, allowing targeted marketing and customer retention strategies.
+
+```{r, message = FALSE, warning = FALSE}
+# Perform RFM analysis
+rfm_data <- clean_sales_data %>%
+  group_by(CUSTOMERNAME) %>%
+  summarise(
+    Recency = as.numeric(difftime(max(ORDERDATE), Sys.Date(), units = "days")),
+    Frequency = n(),
+    Monetary = sum(SALES)
+  )
+
+# Rank customers by RFM metrics
+rfm_data <- rfm_data %>%
+  mutate(
+    Recency_Score = ntile(-Recency, 5),
+    Frequency_Score = ntile(Frequency, 5),
+    Monetary_Score = ntile(Monetary, 5)
+  ) %>%
+  mutate(RFM_Score = Recency_Score + Frequency_Score + Monetary_Score)
+
+# Display top customers by RFM score
+head(rfm_data[order(-rfm_data$RFM_Score), ])
+
+```
+
+RFM Analysis Results and Insights
+Top Customers: The table shows high-value customers based on RFM metrics, with high monetary values and frequent purchases.
+
+Recency Scores: Lower recency scores indicate these customers haven't purchased recently. These may be valuable but potentially inactive customers worth re-engaging.
+Re-Engage customers with low recency scores via targeted promotions or incentives.
+
+
+Frequency and Monetary Scores: High frequency and monetary scores indicate loyal, high-spending customers, ideal for loyalty or rewards programs to retain them. Focus on high-frequency, high-monetary customers to encourage continued engagement and spending.
+
+
+
+## Sales by Deal Size
+
+```{r, message = FALSE, warning = FALSE}
+# Boxplot of Sales by Deal Size
+ggplot(clean_sales_data, aes(x = DEALSIZE, y = SALES)) +
+  geom_boxplot() +
+  labs(title = "Sales by Deal Size", x = "Deal Size", y = "Sales Amount")
+
+```
+Sales Amount by Deal Size:
+
+Large Deals: Show the highest median sales, with some high-value outliers, indicating that large deals contribute significantly to revenue.
+Medium Deals: Have a moderate range and median sales, representing steady mid-level contributions.
+Small Deals: Consistently lower sales amounts with a narrow range, showing less revenue impact.
+
+Insights:
+
+Focusing on increasing large and medium deals could have a substantial positive effect on overall sales revenue.
+Outliers in large deals may indicate occasional bulk purchases, suggesting an opportunity to encourage more frequent large orders.
+
+Recommendations:
+
+Targeted Incentives: Offer discounts or promotions to increase the frequency of large deals.
+Bundle Offers: Encourage medium and small deal customers to purchase larger volumes through bundled packages.
+
+
+## Overall Conclusions
+This analysis of automobile sales data reveals key insights into customer purchasing behavior, sales trends, and product performance. Here are the main conclusions:
+
+#### Sales Trends and Seasonality:
+
+The seasonal decomposition of sales data highlights cyclical patterns, suggesting predictable peaks in certain periods. This indicates opportunities for targeted marketing and inventory adjustments during high-demand seasons.
+
+#### High-Impact Sales Drivers:
+
+A strong positive correlation between SALES and PRICEEACH suggests that higher-priced items significantly boost total revenue. Emphasizing premium products or adjusting pricing strategies can maximize profitability.
+Deal size also impacts sales; large deals contribute substantially to revenue. Encouraging bulk purchases or promoting medium-to-large deals may further increase sales.
+
+#### Customer Segmentation and Behavior:
+
+The RFM analysis shows that there is a segment of high-frequency, high-value customers. Loyalty programs targeting these customers can increase retention and lifetime value.
+There is also a segment of infrequent or potentially inactive customers (longer days since last purchase), representing an opportunity for re-engagement strategies to reduce churn.
+
+#### Recommendations for Action:
+
+Marketing and Promotions: Use seasonal insights to time promotions during high-demand periods and offer incentives for large deals.
+Customer Retention: Implement loyalty programs for regular customers and create personalized re-engagement campaigns for less active ones.
+Pricing Strategy: Focus on high-margin products, leveraging the positive correlation between price and sales to drive profitability.
+
+
